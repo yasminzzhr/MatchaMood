@@ -18,26 +18,51 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Alpine JS -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+
+    [x-clock]
+    <script>
+      document.addEventListener("alpine:init", () => {
+        document
+          .querySelectorAll("[x-cloak]")
+          .forEach((el) => el.removeAttribute("x-cloak"));
+      });
+    </script>
+
+    <!-- App -->
+    <script src="src/app.js"></script>
   </head>
   <body>
     <!-- Navbar Start -->
-    <nav class="navbar">
+    <nav class="navbar" x-data>
       <a href="#" class="navbar-logo">Matcha<span>Mood</span></a>
 
       <div class="navbar-nav" id="navlinks">
         <a href="#home">Home</a>
         <a href="#about">About</a>
         <a href="#menu">Menu</a>
+        <a href="#products">Products</a>
         <a href="#contact">Contact</a>
       </div>
 
       <div class="navbar-extra">
-        <a href="#" id="search" aria-label="Search"
+        <a href="#" id="search-button" aria-label="Search"
           ><i data-feather="search"></i
         ></a>
-        <a href="#" id="shopping-cart" aria-label="Cart"
-          ><i data-feather="shopping-cart"></i
-        ></a>
+        <a href="#" id="shopping-cart-button" aria-label="Cart">
+          <i data-feather="shopping-cart"></i>
+          <span
+            class="quantity-badge"
+            x-show="$store.cart.quantity"
+            x-text="$store.cart.quantity"
+          ></span>
+        </a>
+
         <a
           href="#"
           id="hamburger-menu"
@@ -48,18 +73,114 @@
           <i data-feather="menu"></i>
         </a>
       </div>
+
+      <!-- Search Form Start -->
+      <div class="search-form" x-data>
+        <input
+          type="search"
+          id="search-box"
+          placeholder="search here..."
+          x-model="$store.products.search"
+        />
+        <label for="search-box"><i data-feather="search"></i></label>
+      </div>
+      <!-- Search Form End -->
+
+      <!-- Shopping Cart Start -->
+      <div
+        class="shopping-cart"
+        x-data="{
+    format(n){ return new Intl.NumberFormat('id-ID', {
+      style:'currency', currency:'IDR', maximumFractionDigits:0
+    }).format(n) }
+  }"
+      >
+        <template
+          x-for="(item, index) in $store.cart.items"
+          :key="item.id ?? index"
+        >
+          <div class="cart-item">
+            <img :src="item.img" :alt="item.name" />
+
+            <div class="item-detail">
+              <h3 x-text="item.name"></h3>
+
+              <div class="item-price">
+                <span x-text="format(item.price)"></span>
+                &times;
+                <button
+                  type="submit"
+                  id="remove"
+                  @click="$store.cart.decrement(item.id)"
+                >
+                  &minus;
+                </button>
+
+                <span x-text="item.quantity"></span>
+
+                <button
+                  type="button"
+                  id="add"
+                  @click="$store.cart.increment(item.id)"
+                >
+                  &plus;
+                </button>
+
+                &equals;
+                <span x-text="format(item.price * item.quantity)"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="!$store.cart.items.length">
+          <h4 style="text-align: center; margin-top: 1rem">Cart is Empty</h4>
+        </template>
+
+        <h4>Total : <span x-text="format($store.cart.total)"></span></h4>
+
+        <div class="form-container" x-show="$store.cart.items.length">
+          <form action="" id="checkoutForm">
+            <h5>Customer Detail</h5>
+            <label for="name">
+              <span>Name</span>
+              <input type="text" name="name" id="name" />
+            </label>
+
+            <label for="email">
+              <span>Email</span>
+              <input type="email" name="email" id="email" />
+            </label>
+
+            <label for="phone">
+              <span>Phone</span>
+              <input type="number" name="phone" id="phone" autocomplete="off" />
+            </label>
+
+            <button
+              class="checkout-button disabled"
+              type="button"
+              id="checkout-button"
+              value="checkout"
+            >
+              Checkout
+            </button>
+          </form>
+        </div>
+      </div>
+      <!-- Shopping Cart End -->
     </nav>
     <!-- Navbar End -->
 
     <!-- Hero Section Start -->
     <section class="hero" id="home">
       <main class="content">
-        <h1>The Art of <br /><span>Matcha</span> Living</h1>
+        <h1>The Art of <span>Matcha</span> Living</h1>
         <p>
           Crafted with heart, <strong>MatchaMood</strong> invites you <br />to
           rediscover serenity in every cup
         </p>
-        <a href="#" class="cta">Explore the Bar</a>
+        <a href="#menu" class="cta">Explore the Bar</a>
       </main>
     </section>
     <!-- Hero Section End -->
@@ -193,9 +314,59 @@
     </section>
     <!-- Menu Section End -->
 
+    <!-- Product Section Start -->
+    <section
+      class="products"
+      id="products"
+      x-data="products()"
+      x-init="$nextTick(() => feather.replace())"
+    >
+      <h2 id="products"><span>Our Signature</span> Product</h2>
+      <p>
+        Experience the art of Japanese craftsmanship through our curated matcha
+        collection.
+      </p>
+
+      <div class="row product-grid" x-effect="feather.replace()">
+        <template x-for="(item, index) in filtered" :key="item.id">
+          <div class="product-card" :data-price="item.price" :data-id="item.id">
+            <div class="product-image">
+              <img :src="item.img" :alt="item.name" />
+              <div class="product-icons">
+                <a
+                  href="#"
+                  aria-label="Add to cart"
+                  @click.prevent="addToCart(item)"
+                >
+                  <i data-feather="shopping-cart"></i>
+                </a>
+
+                <!-- tetap pakai class lama; klik-nya di-bridge via JS -->
+                <a href="#" class="item-detail-button"
+                  ><i data-feather="eye"></i
+                ></a>
+              </div>
+            </div>
+            <div class="product-content">
+              <h3 x-text="item.name"></h3>
+              <div class="product-meta">
+                <div class="product-stars">
+                  <i data-feather="star"></i><i data-feather="star"></i>
+                  <i data-feather="star"></i><i data-feather="star"></i>
+                  <i data-feather="star"></i>
+                </div>
+                <div class="product-price" x-text="format(item.price)"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+    <!-- Product Section End -->
+
     <!-- Contact Section Start -->
-    <section id="contact" class="contact">
-      <h2><span>Contact</span> Us</h2>
+    <section class="contact">
+      <h2 id="contact"><span>Contact</span> Us</h2>
       <p>
         Let’s stay connected and share the matcha vibe together with
         <strong>MatchaMood</strong>.
@@ -211,7 +382,7 @@
           class="map"
         ></iframe>
 
-        <!-- FFORM -->
+        <!-- FORM -->
         <form class="form" action="">
           <div class="input-group">
             <span class="icon"><i data-feather="user"></i></span>
@@ -281,12 +452,55 @@
 
     <!-- Footer End -->
 
+    <!-- Modal Box Item Detail Start -->
+    <div
+      class="modal"
+      id="item-detail-modal"
+      x-data="modal()"
+      x-cloak
+      x-show="open"
+      x-transition.opacity
+      @keydown.escape.window="close()"
+      @close-detail.window="close()"
+      @open-detail.window="openFromEvent($event)"
+    >
+      <div class="modal-container" @click.outside="close()">
+        <a href="#" class="close-icon" @click.prevent="close()"
+          ><i data-feather="x"></i
+        ></a>
+        <div class="modal-content">
+          <img
+            :src="item?.img || 'img/products/product1.jpg'"
+            :alt="item?.name || 'Product image'"
+          />
+          <div class="product-content">
+            <h3 x-text="item?.name || ''"></h3>
+            <p x-text="item?.desc || ''"></p>
+
+            <div class="product-price">
+              <span x-text="format(item?.price || 0)"></span>
+              <span x-show="item?.was" x-text="format(item?.was)"></span>
+            </div>
+
+            <button
+              type="button"
+              class="btn-add"
+              @click="$store.cart.add(item)"
+            >
+              <i data-feather="shopping-cart"></i>
+              <span>Add to Cart</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Box Item Detail End -->
+
     <!-- Feather Icons init -->
     <script>
       feather.replace();
     </script>
 
-    <!-- Bact to top Button -->
     <button id="backToTop" aria-label="Back to top">↑</button>
     <script>
       const btn = document.getElementById("backToTop");
@@ -301,7 +515,20 @@
       onScroll();
     </script>
 
+    <!-- Toast Notification -->
+    <div
+      class="toast-wrap"
+      x-data="toast()"
+      @notify.window="show(($event.detail && $event.detail.message) || 'Added to cart')"
+      x-cloak
+    >
+      <div class="toast" x-show="open" x-transition.opacity>
+        <i data-feather="check-circle"></i>
+        <span x-text="text"></span>
+      </div>
+    </div>
+
     <!-- Scripts -->
-    <script src="js/script.js"></script>
+    <script src="js/script.js" async></script>
   </body>
 </html>
